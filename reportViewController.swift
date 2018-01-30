@@ -13,7 +13,7 @@ import SQLite
 class reportViewController: NSViewController {
     
     //Db connection
-    let filePath: NSObject
+    let filePath: URL
     let db: Connection
     
     //Tracks tableView
@@ -41,23 +41,18 @@ class reportViewController: NSViewController {
     
     var _summaryTaskItems: Array<Row> = []
     
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: <#T##NSCoder#>)
+
+    required init?(coder lol: NSCoder) {
+        filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
+        db = try! Connection(filePath.absoluteString)
+        super.init(coder: lol)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
-        let db = try? Connection(filePath.absoluteString)
-        
         do {
-            if((db) != nil) {
-                
-                _summaryTaskItems = Array(try db!.prepare(_summaryView))
-
-            }
+                _summaryTaskItems = Array(try db.prepare(_summaryView))
         } catch {
             print("error getting tasks")
         }
@@ -110,7 +105,7 @@ extension reportViewController: NSTableViewDelegate {
             
         }
         
-        if let cell = tableView.make(withIdentifier: cellIdentifier, owner: nil) as? NSTableCellView {
+        if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(rawValue: cellIdentifier), owner: nil) as? NSTableCellView {
             cell.textField?.stringValue = text
             return cell
         }

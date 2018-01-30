@@ -28,7 +28,7 @@ class ViewController: NSViewController {
     @IBOutlet weak var tableView: NSTableView!
     
     //Db connection
-    let filePath: NSObject
+    let filePath: URL
     let db: Connection
     
     //DB tables
@@ -54,20 +54,17 @@ class ViewController: NSViewController {
     var _lastClickedTask: Int = -1
        
     
-    required init?(coder: NSCoder) {
-        super.init(coder: <#T##NSCoder#>)
+    required init?(coder lol: NSCoder) {
+        filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
+        db = try! Connection(filePath.absoluteString)
+        super.init(coder: lol)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
-        let db = try? Connection(filePath.absoluteString)
-        
         do {
-            if((db) != nil) {
-                _taskItems = Array(try db!.prepare(_tasks.order(_id.desc)))
-            }
+                _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
         } catch {
             print("error getting tasks")
         }
@@ -86,11 +83,11 @@ class ViewController: NSViewController {
         
             switch(_taskItems[_lastClickedTask].get(_status)) {
                 case "idle"?:
-                    btnStopWatch.image = NSImage(named: "btnPlay")
+                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
                     break;
                 
                 case "active"?:
-                    btnStopWatch.image = NSImage(named: "btnStop")
+                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
                     break;
                 
                 default:
@@ -119,7 +116,7 @@ class ViewController: NSViewController {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = text
-        alert.alertStyle = NSAlertStyle.warning
+        alert.alertStyle = NSAlert.Style.warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
@@ -196,7 +193,7 @@ class ViewController: NSViewController {
                         
                         try db.run(updateItem.update(_status <- "active"))
                         
-                        btnStopWatch.image = NSImage(named: "btnStop")
+                        btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
                         
                         reloadContent()
                     //}
@@ -227,7 +224,7 @@ class ViewController: NSViewController {
                         
                         try db.run(updateItem.update(_status <- "idle"))
                         
-                        btnStopWatch.image = NSImage(named: "btnPlay")
+                        btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
                         
                         reloadContent()
                     //}
@@ -349,7 +346,7 @@ extension ViewController: NSTableViewDelegate {
         }
         
         // 3
-        if let cell = tableView.make(withIdentifier: cellIdentifier, owner: nil) as? NSTableCellView {
+        if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(rawValue: cellIdentifier), owner: nil) as? NSTableCellView {
             cell.textField?.stringValue = text
             return cell
         }
