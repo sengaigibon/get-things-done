@@ -28,8 +28,8 @@ class ViewController: NSViewController {
     @IBOutlet weak var tableView: NSTableView!
     
     //Db connection
-    let filePath = NSObject()
-    let db = NSObject()
+    let filePath: NSObject
+    let db: Connection
     
     //DB tables
     let _tasks = Table("tasks")
@@ -52,6 +52,11 @@ class ViewController: NSViewController {
     
     var _taskItems: Array<Row> = []
     var _lastClickedTask: Int = -1
+       
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: <#T##NSCoder#>)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -99,9 +104,9 @@ class ViewController: NSViewController {
     func reloadContent() {
         
         do {
-            if((db) != nil) {
-                _taskItems = Array(try db!.prepare(_tasks.order(_id.desc)))
-            }
+            //if((db) != nil) {
+                _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
+            //}
         } catch {
             print("error getting tasks")
         }
@@ -151,14 +156,14 @@ class ViewController: NSViewController {
         do {
             let insert = _tasks.insert(_tag <- tTag, _taskTitle <- tTitle, _startDate <- dstartDate)
             
-            if((db) != nil) {
-                try db?.run(insert)
+            //if((db) != nil) {
+                try db.run(insert)
                 
                 fieldTag.stringValue = ""
                 fieldTaskTitle.stringValue = ""
                 
                 reloadContent()
-            }
+            //}
         } catch {
             print("error")
         }
@@ -186,15 +191,15 @@ class ViewController: NSViewController {
                     let insert = _taskTracker.insert(_trackerTaskId <- taskId!, _trackerStart <- now)
                     let updateItem = _tasks.filter(_id == taskItem.get(_id))
                     
-                    if((db) != nil) {
-                        try db?.run(insert)
+                    //if((db) != nil) {
+                        try db.run(insert)
                         
-                        try db?.run(updateItem.update(_status <- "active"))
+                        try db.run(updateItem.update(_status <- "active"))
                         
                         btnStopWatch.image = NSImage(named: "btnStop")
                         
                         reloadContent()
-                    }
+                    //}
                 } catch {
                     print("error")
                 }
@@ -208,8 +213,8 @@ class ViewController: NSViewController {
                     let filteredTaskTracker = _taskTracker.filter(_trackerTaskId == taskItem.get(_id)!).order(_trackerTrackId.desc)
                     let updateItem = _tasks.filter(_id == taskItem.get(_id))
                     
-                    if((db) != nil) {
-                        let trackItem = try db?.pluck(filteredTaskTracker)
+                    //if((db) != nil) {
+                        let trackItem = try db.pluck(filteredTaskTracker)
                         let trackItemId = trackItem?.get(_trackerTrackId)
                         let trackItemStart = trackItem?.get(_trackerStart)
                         
@@ -218,14 +223,14 @@ class ViewController: NSViewController {
                         
                         let updateTaskTracker = _taskTracker.filter(_trackerTrackId == trackItemId)
                         
-                        try db?.run(updateTaskTracker.update([_trackerStop <- now, _trackerTotal <- totalTime]))
+                        try db.run(updateTaskTracker.update([_trackerStop <- now, _trackerTotal <- totalTime]))
                         
-                        try db?.run(updateItem.update(_status <- "idle"))
+                        try db.run(updateItem.update(_status <- "idle"))
                         
                         btnStopWatch.image = NSImage(named: "btnPlay")
                         
                         reloadContent()
-                    }
+                    //}
                 } catch {
                     print("error")
                 }
@@ -252,12 +257,12 @@ class ViewController: NSViewController {
                 
                 let updateItem = _tasks.filter(_id == _taskItems[_lastClickedTask].get(_id))
                 
-                if((db) != nil) {
-                    try db?.run(updateItem.update(_status <- "completed"))
+                //if((db) != nil) {
+                    try db.run(updateItem.update(_status <- "completed"))
                     
                     _lastClickedTask = -1
                     reloadContent()
-                }
+                //}
             } catch {
                 print("error")
             }

@@ -13,8 +13,8 @@ import SQLite
 class reportViewController: NSViewController {
     
     //Db connection
-    let filePath = NSObject()
-    let db = NSObject()
+    let filePath: NSObject
+    let db: Connection
     
     //Tracks tableView
     @IBOutlet weak var reportTableView: NSTableView!
@@ -40,6 +40,11 @@ class reportViewController: NSViewController {
     let _trackerTotal = Expression<Int?>("total")
     
     var _summaryTaskItems: Array<Row> = []
+    
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: <#T##NSCoder#>)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
