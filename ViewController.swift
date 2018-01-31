@@ -26,7 +26,6 @@ class ViewController: NSViewController {
     
     //Tasks tableView
     @IBOutlet weak var tableView: NSTableView!
-    @IBOutlet weak var completedTasksTableView: NSTableView!
     
     //Db connection
     let filePath: URL
@@ -65,7 +64,7 @@ class ViewController: NSViewController {
         super.viewDidLoad()
         
         do {
-            _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
+            _taskItems = Array(try db.prepare(_tasks.where(_status != "completed").order(_id.desc)))
         } catch {
             print("error getting tasks")
         }
@@ -73,9 +72,6 @@ class ViewController: NSViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.action = #selector(onItemClicked)
-        
-        completedTasksTableView.delegate = self
-        completedTasksTableView.dataSource = self
     }
 
     //Action triggered by a click on the TableView
@@ -83,20 +79,22 @@ class ViewController: NSViewController {
         
         _lastClickedTask = tableView.clickedRow
         
-        if(_lastClickedTask != -1) {
+        if (_lastClickedTask < 0) {
+            dialogOK(title: "Reminder", text: "Please select a task.")
+            return
+        }
         
-            switch(_taskItems[_lastClickedTask].get(_status)) {
-                case "idle"?:
-                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
-                    break;
-                
-                case "active"?:
-                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
-                    break;
-                
-                default:
-                    break;
-            }
+        switch(_taskItems[_lastClickedTask].get(_status)) {
+            case "idle"?:
+                btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
+                break;
+            
+            case "active"?:
+                btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
+                break;
+            
+            default:
+                break;
         }
     }
     
@@ -171,6 +169,11 @@ class ViewController: NSViewController {
     // Start/stop tracking a task
     @IBAction func actionStartStopwatch(_ sender: NSButton) {
         
+        if (_lastClickedTask < 0) {
+            dialogOK(title: "Reminder", text: "Please select a task.")
+            return
+        }
+        
         let taskItem = _taskItems[_lastClickedTask]
         let status = taskItem.get(_status);
         let taskId = taskItem.get(_id);
@@ -189,15 +192,13 @@ class ViewController: NSViewController {
                     let insert = _taskTracker.insert(_trackerTaskId <- taskId!, _trackerStart <- now)
                     let updateItem = _tasks.filter(_id == taskItem.get(_id))
                     
-                    //if((db) != nil) {
-                        try db.run(insert)
-                        
-                        try db.run(updateItem.update(_status <- "active"))
-                        
-                        btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
-                        
-                        reloadContent()
-                    //}
+                    try db.run(insert)
+                    
+                    try db.run(updateItem.update(_status <- "active"))
+                    
+                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnStop"))
+                    
+                    reloadContent()
                 } catch {
                     print("error")
                 }
@@ -244,28 +245,33 @@ class ViewController: NSViewController {
     //Delete selected task without prompting for confirmation
     @IBAction func deleteTaskAction(_ sender: Any) {
         
+        if (_lastClickedTask < 0) {
+            dialogOK(title: "Reminder", text: "Please select a task.")
+            return
+        }
         
+        //this section would delete a selected task
     }
     
     @IBAction func completeTaskAction(_ sender: Any) {
 
-        if(_lastClickedTask != -1) {
-            
-            do {
-                
-                let updateItem = _tasks.filter(_id == _taskItems[_lastClickedTask].get(_id))
-                
-                //if((db) != nil) {
-                    try db.run(updateItem.update(_status <- "completed"))
-                    
-                    _lastClickedTask = -1
-                    reloadContent()
-                //}
-            } catch {
-                print("error")
-            }
-            
+        if (_lastClickedTask < 0) {
+            dialogOK(title: "Reminder", text: "Please select a task.")
+            return
         }
+            
+        do {
+            
+            let updateItem = _tasks.filter(_id == _taskItems[_lastClickedTask].get(_id))
+            
+            try db.run(updateItem.update(_status <- "completed"))
+        
+            _lastClickedTask = -1
+            reloadContent()
+        } catch {
+            print("error")
+        }
+        
 
 //        if(_lastClickedTask != -1) {
 //            
