@@ -26,6 +26,7 @@ class ViewController: NSViewController {
     
     //Tasks tableView
     @IBOutlet weak var tableView: NSTableView!
+    @IBOutlet weak var completedTasksTableView: NSTableView!
     
     //Db connection
     let filePath: URL
@@ -64,7 +65,7 @@ class ViewController: NSViewController {
         super.viewDidLoad()
         
         do {
-                _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
+            _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
         } catch {
             print("error getting tasks")
         }
@@ -72,6 +73,9 @@ class ViewController: NSViewController {
         tableView.delegate = self
         tableView.dataSource = self
         tableView.action = #selector(onItemClicked)
+        
+        completedTasksTableView.delegate = self
+        completedTasksTableView.dataSource = self
     }
 
     //Action triggered by a click on the TableView
@@ -94,16 +98,13 @@ class ViewController: NSViewController {
                     break;
             }
         }
-
     }
     
     //Query db and reload tableView
     func reloadContent() {
         
         do {
-            //if((db) != nil) {
-                _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
-            //}
+            _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
         } catch {
             print("error getting tasks")
         }
@@ -210,24 +211,24 @@ class ViewController: NSViewController {
                     let filteredTaskTracker = _taskTracker.filter(_trackerTaskId == taskItem.get(_id)!).order(_trackerTrackId.desc)
                     let updateItem = _tasks.filter(_id == taskItem.get(_id))
                     
-                    //if((db) != nil) {
-                        let trackItem = try db.pluck(filteredTaskTracker)
-                        let trackItemId = trackItem?.get(_trackerTrackId)
-                        let trackItemStart = trackItem?.get(_trackerStart)
-                        
-                        let startDate = formatter.date(from: trackItemStart!)
-                        let totalTime = Calendar.current.dateComponents([.second], from: startDate!, to: date).second
-                        
-                        let updateTaskTracker = _taskTracker.filter(_trackerTrackId == trackItemId)
-                        
-                        try db.run(updateTaskTracker.update([_trackerStop <- now, _trackerTotal <- totalTime]))
-                        
-                        try db.run(updateItem.update(_status <- "idle"))
-                        
-                        btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
-                        
-                        reloadContent()
-                    //}
+                    
+                    let trackItem = try db.pluck(filteredTaskTracker)
+                    let trackItemId = trackItem?.get(_trackerTrackId)
+                    let trackItemStart = trackItem?.get(_trackerStart)
+                    
+                    let startDate = formatter.date(from: trackItemStart!)
+                    let totalTime = Calendar.current.dateComponents([.second], from: startDate!, to: date).second
+                    
+                    let updateTaskTracker = _taskTracker.filter(_trackerTrackId == trackItemId)
+                    
+                    try db.run(updateTaskTracker.update([_trackerStop <- now, _trackerTotal <- totalTime]))
+                    
+                    try db.run(updateItem.update(_status <- "idle"))
+                    
+                    btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
+                    
+                    reloadContent()
+
                 } catch {
                     print("error")
                 }
@@ -307,7 +308,8 @@ extension ViewController: NSTableViewDelegate {
         static let titleCell = "TitleCell"
         static let startCell = "StartCell"
         static let dueCell = "DueCell"
-        static let statusCell = "StatusCell"    }
+        static let statusCell = "StatusCell"
+    }
     
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         
@@ -345,12 +347,10 @@ extension ViewController: NSTableViewDelegate {
             cellIdentifier = CellIdentifiers.statusCell
         }
         
-        // 3
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(rawValue: cellIdentifier), owner: nil) as? NSTableCellView {
             cell.textField?.stringValue = text
             return cell
         }
         return nil
     }
-    
 }
