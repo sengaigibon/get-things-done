@@ -102,7 +102,7 @@ class ViewController: NSViewController {
     func reloadContent() {
         
         do {
-            _taskItems = Array(try db.prepare(_tasks.order(_id.desc)))
+            _taskItems = Array(try db.prepare(_tasks.where(_status != "completed").order(_id.desc)))
         } catch {
             print("error getting tasks")
         }

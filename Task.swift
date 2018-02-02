@@ -72,9 +72,9 @@ class Task {
  
  status: active, idle, completed, postponed
  
- select t.title, sum(tt.total) 
- from tasks t join taskTracker tt on tt.taskId = t.taskId 
- group by t.title;
+ CREATE VIEW summary as select t.title, sum(tt.total) from tasks t join taskTracker tt on tt.taskId = t.taskId group by t.title;
+ CREATE VIEW summary2 as select t.title as title, sum(tt.total) as total from tasks t join taskTracker tt on tt.taskId = t.taskId group by t.title;
  
+ select t.title as title, date(tt.start), date(tt.stop), strftime("%H:%m:%S", tt.start), strftime("%H:%m:%S", tt.stop), tt.total from tasks t join taskTracker tt on tt.taskId = t.taskId order by title;
  
  */
