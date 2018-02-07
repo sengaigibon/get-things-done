@@ -27,7 +27,7 @@ class reportViewController: NSViewController {
     @IBOutlet weak var goExtendedPeriodBtn: NSButton!
     @IBOutlet weak var startDP: NSDatePicker!
     @IBOutlet weak var endDp: NSDatePicker!
-    
+    @IBOutlet weak var laberHours: NSTextField!
     
     //DB tables
     let _tasks = Table("tasks")
@@ -50,12 +50,13 @@ class reportViewController: NSViewController {
     let _trackerTotal = Expression<Int?>("total")
     
     var _summaryTaskItemsArr: Array<Statement.Element> = []
+    var _formattedTasks: [Any] = []
     
     required init?(coder lol: NSCoder) {
         filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
         db = try! Connection(filePath.absoluteString)
-        query = "select t.title as title, sum(tt.total) as total from tasks t join taskTracker tt on tt.taskId = t.taskId"
-        groupAndOrderQuery = " group by t.taskId order by total desc"
+        query = "select tt.taskId as taskId, t.title as title, tt.total as total, tt.start from tasks t join taskTracker tt on tt.taskId = t.taskId"
+        groupAndOrderQuery = " order by taskId"
         super.init(coder: lol)
     }
     
@@ -65,6 +66,7 @@ class reportViewController: NSViewController {
         do {
             let localQuery = query + " where date(tt.start) = date()" + groupAndOrderQuery
             _summaryTaskItemsArr = Array(try db.prepare(localQuery))
+            processRecords()
         } catch {
             print("error getting tasks")
         }
@@ -77,6 +79,55 @@ class reportViewController: NSViewController {
         endDp.dateValue = date
         
         //reportTableView.action = #selector(onItemClicked)
+    }
+    
+    func processRecords()
+    {
+        var taskId : Binding
+        var taskName : Binding
+        var totalTime : Binding
+        var timeStamp : Binding
+
+        var cPreviousTaskId = 0
+        var cCurrentTaskId = 0
+        var cTaskName = ""
+        var cTaskTime = 0
+        var cTotalTime = 0
+        var cTimeStamp = ""
+
+        var formatedTasks: Array<Any> = []
+
+        for record in _summaryTaskItemsArr {
+            print(record)
+            taskId = record[0] ?? 0
+            taskName = record[1] ?? ""
+            totalTime = record[2] ?? 0
+
+            cCurrentTaskId = Int(String(describing: taskId))!
+            cTaskName = String(describing: taskName)
+            cTaskTime = Int(String(describing: totalTime))!
+
+            if cTaskTime == 0 {
+                timeStamp = record[3] ?? ""
+                cTimeStamp = String(describing: timeStamp)
+                print("tmestamp: " + cTimeStamp)
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                let date = formatter.date(from: cTimeStamp)
+                let elapsed = Date().timeIntervalSince(date!)
+                cTaskTime = Int(elapsed)
+            }
+
+            if cPreviousTaskId == cCurrentTaskId {
+                cTotalTime += cTaskTime
+            } else {
+                cTotalTime = cTaskTime
+                cPreviousTaskId = cCurrentTaskId
+                formatedTasks.append([cCurrentTaskId, cTaskName, cTotalTime])
+            }
+        }
+
+        _formattedTasks = formatedTasks
     }
     
     @IBAction func actionClick(_ sender: Any) {
@@ -111,6 +162,7 @@ class reportViewController: NSViewController {
         
         do {
             _summaryTaskItemsArr = Array(try db.prepare(localQuery))
+            processRecords()
         } catch {
             print("error getting tasks")
         }
@@ -157,8 +209,11 @@ extension reportViewController: NSTableViewDelegate {
         var content: String = ""
         var cellIdentifier: String = ""
         
-        let itemTotal = _summaryTaskItemsArr[row][1] ?? 0
-        let itemTaskName = _summaryTaskItemsArr[row][0] ?? ""
+//        let itemTotal = _summaryTaskItemsArr[row][2] ?? 0
+//        let itemTaskName = _summaryTaskItemsArr[row][1] ?? ""
+        let row = _formattedTasks[row] as? [Any]
+        let itemTotal = row![2]
+        let itemTaskName = row![1]
         
         if tableColumn == tableView.tableColumns[0] {
             
@@ -166,6 +221,7 @@ extension reportViewController: NSTableViewDelegate {
             if tempTotal == 0 {
                 print("es cero")
             }
+            
             content = String(format: "%.3f", tempTotal / 3600)
             cellIdentifier = CellIdentifiers.timeSpentCell
             

@@ -181,7 +181,7 @@ class ViewController: NSViewController {
         let date = Date()
         let formatter = DateFormatter()
         
-        formatter.dateFormat = "yyy-MM-dd HH:mm:ss"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         
         let now = formatter.string(from: date)
  
