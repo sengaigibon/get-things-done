@@ -27,7 +27,7 @@ class reportViewController: NSViewController {
     @IBOutlet weak var goExtendedPeriodBtn: NSButton!
     @IBOutlet weak var startDP: NSDatePicker!
     @IBOutlet weak var endDp: NSDatePicker!
-    @IBOutlet weak var laberHours: NSTextField!
+    @IBOutlet weak var labelHours: NSTextField!
     
     //DB tables
     let _tasks = Table("tasks")
@@ -51,6 +51,7 @@ class reportViewController: NSViewController {
     
     var _summaryTaskItemsArr: Array<Statement.Element> = []
     var _formattedTasks: [Any] = []
+    //var _tasks: [Int: Array<Any>]
     
     required init?(coder lol: NSCoder) {
         filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
@@ -78,7 +79,11 @@ class reportViewController: NSViewController {
         startDP.dateValue = date
         endDp.dateValue = date
         
-        //reportTableView.action = #selector(onItemClicked)
+        reportTableView.doubleAction  = #selector(onItemDoubleClicked)
+    }
+    
+    @objc private func onItemDoubleClicked() {
+        print("lalala")
     }
     
     func processRecords()
@@ -91,43 +96,120 @@ class reportViewController: NSViewController {
         var cPreviousTaskId = 0
         var cCurrentTaskId = 0
         var cTaskName = ""
-        var cTaskTime = 0
-        var cTotalTime = 0
+        var cTaskTime : Float = 0
+        var cTotalTaskTime : Float = 0
+        var cAllTasksTime : Float = 0
         var cTimeStamp = ""
 
         var formatedTasks: Array<Any> = []
+        var tasks = [Int: Array<Any>]()
 
+        var index = 1
+        let items = _summaryTaskItemsArr.count
+        
         for record in _summaryTaskItemsArr {
-            print(record)
             taskId = record[0] ?? 0
             taskName = record[1] ?? ""
             totalTime = record[2] ?? 0
-
+            
             cCurrentTaskId = Int(String(describing: taskId))!
             cTaskName = String(describing: taskName)
-            cTaskTime = Int(String(describing: totalTime))!
-
+            cTaskTime = Float(String(describing: totalTime))!
+            
             if cTaskTime == 0 {
                 timeStamp = record[3] ?? ""
                 cTimeStamp = String(describing: timeStamp)
-                print("tmestamp: " + cTimeStamp)
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
                 let date = formatter.date(from: cTimeStamp)
                 let elapsed = Date().timeIntervalSince(date!)
-                cTaskTime = Int(elapsed)
+                cTaskTime = Float(elapsed)
+                print("next is calculated time:")
+                print(cTaskTime)
+                print(cTimeStamp)
             }
+            
+            cAllTasksTime += cTaskTime
+            
+            cTotalTaskTime = cTaskTime
+            cPreviousTaskId = cCurrentTaskId
+            tasks[cCurrentTaskId] = [cTaskName, cTotalTaskTime]
+        
+            print("\(taskId) -> \(cTotalTaskTime)")
+            break
+        }
+        
+        if items == 1 {
+            formatedTasks.append([cCurrentTaskId, cTaskName, cTotalTaskTime])
+        } else {
+            for record in _summaryTaskItemsArr {
+                
+                if index == 1 {
+                    index += 1
+                    continue
+                }
+                
+                taskId = record[0] ?? 0
+                taskName = record[1] ?? ""
+                totalTime = record[2] ?? 0
 
-            if cPreviousTaskId == cCurrentTaskId {
-                cTotalTime += cTaskTime
-            } else {
-                cTotalTime = cTaskTime
-                cPreviousTaskId = cCurrentTaskId
-                formatedTasks.append([cCurrentTaskId, cTaskName, cTotalTime])
+                cCurrentTaskId = Int(String(describing: taskId))!
+                cTaskName = String(describing: taskName)
+                cTaskTime = Float(String(describing: totalTime))!
+
+                if cTaskTime == 0 {
+                    timeStamp = record[3] ?? ""
+                    cTimeStamp = String(describing: timeStamp)
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                    let date = formatter.date(from: cTimeStamp)
+                    let elapsed = Date().timeIntervalSince(date!)
+                    cTaskTime = Float(elapsed)
+                    print("next is calculated time:")
+                    print(cTaskTime)
+                    print(cTimeStamp)
+                }
+
+                cAllTasksTime += cTaskTime
+                
+                if cPreviousTaskId == cCurrentTaskId {
+                    cTotalTaskTime += cTaskTime
+                    let tmpTime = Float(String(describing: tasks[cCurrentTaskId]![1]))
+                    tasks[cCurrentTaskId]![1] = tmpTime! + cTaskTime
+                } else {
+                    formatedTasks.append([cPreviousTaskId, tasks[cPreviousTaskId]![0], tasks[cPreviousTaskId]![1]])
+                    cTotalTaskTime = cTaskTime
+                    cPreviousTaskId = cCurrentTaskId
+                    tasks[cCurrentTaskId] = [cTaskName, cTotalTaskTime]
+                }
+                print("\(taskId) -> \(cTaskTime)")
+                
+                if index == items {
+                    formatedTasks.append([cCurrentTaskId, cTaskName, cTotalTaskTime])
+                }
+                
+                index += 1
             }
         }
 
+        print("")
+        print("cAllTasksTime:")
+        print(cAllTasksTime)
+        print("")
+        print("tasks:")
+        print(tasks)
+
+        print("")
+        print("next is array:")
+        labelHours.stringValue = String(format: "%.3f", cAllTasksTime / 3600)
+        print("")
+        print("formatedTasks:")
+        print(formatedTasks)
+        print("")
+        print("_summaryTaskItemsArr:")
+        print(_summaryTaskItemsArr)
         _formattedTasks = formatedTasks
+        //_tasks = tasks
     }
     
     @IBAction func actionClick(_ sender: Any) {
@@ -181,6 +263,7 @@ class reportViewController: NSViewController {
         
         do {
             _summaryTaskItemsArr = Array(try db.prepare(localQuery))
+            processRecords()
         } catch {
             print("error getting tasks")
         }
@@ -192,7 +275,7 @@ class reportViewController: NSViewController {
 
 extension reportViewController: NSTableViewDataSource {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return _summaryTaskItemsArr.count
+        return _formattedTasks.count
     }
 }
 
@@ -211,9 +294,9 @@ extension reportViewController: NSTableViewDelegate {
         
 //        let itemTotal = _summaryTaskItemsArr[row][2] ?? 0
 //        let itemTaskName = _summaryTaskItemsArr[row][1] ?? ""
-        let row = _formattedTasks[row] as? [Any]
-        let itemTotal = row![2]
-        let itemTaskName = row![1]
+        let thisRow = _formattedTasks[row] as? [Any]
+        let itemTotal = thisRow![2]
+        let itemTaskName = thisRow![1]
         
         if tableColumn == tableView.tableColumns[0] {
             

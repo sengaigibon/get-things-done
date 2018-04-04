@@ -64,7 +64,7 @@ class ViewController: NSViewController {
         super.viewDidLoad()
         
         do {
-            _taskItems = Array(try db.prepare(_tasks.where(_status != "completed").order(_id.desc)))
+            _taskItems = Array(try db.prepare(_tasks.where(_status != "completed").order(_id.desc).order(_status.asc)))
         } catch {
             print("error getting tasks")
         }
