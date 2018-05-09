@@ -7,7 +7,7 @@
 //
 
 import Cocoa
-import SQLite
+import SQLite.Swift
 
 
 class reportViewController: NSViewController {
@@ -17,8 +17,9 @@ class reportViewController: NSViewController {
     let db: Connection
     let query: String
     let groupAndOrderQuery: String
+    var _period = " where date(tt.start) = date()"
     
-    //Tracks tableView
+    //Tasks tableView
     @IBOutlet weak var reportTableView: NSTableView!
     
     //Action buttons and other elements
@@ -45,19 +46,24 @@ class reportViewController: NSViewController {
     //Expressions for taskTracker table
     let _trackerTrackId = Expression<Int64?>("trackId")
     let _trackerTaskId = Expression<Int64>("taskId")
-    let _trackerStart = Expression<String?>("start")
-    let _trackerStop = Expression<String?>("stop")
+    let _trackerStart = Expression<Date?>("start")
+    let _trackerStop = Expression<Date?>("stop")
     let _trackerTotal = Expression<Int?>("total")
     
-    var _summaryTaskItemsArr: Array<Statement.Element> = []
+    var _summaryTaskItemsArr: Statement? = nil
     var _formattedTasks: [Any] = []
+    var _coderLOL: NSCoder
     //var _tasks: [Int: Array<Any>]
+    
+    
+    var _summaryTaskItems: Statement? = nil
     
     required init?(coder lol: NSCoder) {
         filePath = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("GetThingsDone/tasks.sqlite");
         db = try! Connection(filePath.absoluteString)
         query = "select tt.taskId as taskId, t.title as title, tt.total as total, tt.start from tasks t join taskTracker tt on tt.taskId = t.taskId"
         groupAndOrderQuery = " order by taskId"
+        _coderLOL = lol
         super.init(coder: lol)
     }
     
@@ -65,12 +71,13 @@ class reportViewController: NSViewController {
         super.viewDidLoad()
         
         do {
-            let localQuery = query + " where date(tt.start) = date()" + groupAndOrderQuery
-            _summaryTaskItemsArr = Array(try db.prepare(localQuery))
-            processRecords()
+            let localQuery = query + _period + groupAndOrderQuery
+            _summaryTaskItemsArr = try db.run(localQuery)
         } catch {
-            print("error getting tasks")
+            print("error getting tasks: \(error)")
         }
+        
+        processRecords()
         
         reportTableView.delegate = self
         reportTableView.dataSource = self
@@ -83,7 +90,11 @@ class reportViewController: NSViewController {
     }
     
     @objc private func onItemDoubleClicked() {
-        print("lalala")
+        let taskDetailsViewController:taskDetailsViewController = self.storyboard!.instantiateController(withIdentifier: NSStoryboard.SceneIdentifier(rawValue: "taskDetails")) as! taskDetailsViewController
+        let thisRow = _formattedTasks[reportTableView.clickedRow] as? [Any]
+        taskDetailsViewController.taskId = String(describing: thisRow![0])
+        taskDetailsViewController.period = _period
+        self.presentViewControllerAsSheet(taskDetailsViewController)
     }
     
     func processRecords()
@@ -104,20 +115,26 @@ class reportViewController: NSViewController {
         var formatedTasks: Array<Any> = []
         var tasks = [Int: Array<Any>]()
 
-        var index = 1
-        let items = _summaryTaskItemsArr.count
+        var index = 0
+        var items = 0
         
-        for record in _summaryTaskItemsArr {
-            taskId = record[0] ?? 0
-            taskName = record[1] ?? ""
-            totalTime = record[2] ?? 0
+        for record in _summaryTaskItemsArr! {
             
+            items += 1
+            
+            if index == 1 {
+                continue
+            }
+            taskId = record[0]!
+            taskName = record[1]!
+            totalTime = record[2]!
+                
             cCurrentTaskId = Int(String(describing: taskId))!
             cTaskName = String(describing: taskName)
             cTaskTime = Float(String(describing: totalTime))!
             
             if cTaskTime == 0 {
-                timeStamp = record[3] ?? ""
+                timeStamp = record[3]!
                 cTimeStamp = String(describing: timeStamp)
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -136,29 +153,29 @@ class reportViewController: NSViewController {
             tasks[cCurrentTaskId] = [cTaskName, cTotalTaskTime]
         
             print("\(taskId) -> \(cTotalTaskTime)")
-            break
+            index = 1;
         }
         
         if items == 1 {
             formatedTasks.append([cCurrentTaskId, cTaskName, cTotalTaskTime])
         } else {
-            for record in _summaryTaskItemsArr {
+            for record in _summaryTaskItemsArr! {
                 
                 if index == 1 {
                     index += 1
                     continue
                 }
                 
-                taskId = record[0] ?? 0
-                taskName = record[1] ?? ""
-                totalTime = record[2] ?? 0
+                taskId = record[0]!
+                taskName = record[1]!
+                totalTime = record[2]!
 
                 cCurrentTaskId = Int(String(describing: taskId))!
                 cTaskName = String(describing: taskName)
                 cTaskTime = Float(String(describing: totalTime))!
 
                 if cTaskTime == 0 {
-                    timeStamp = record[3] ?? ""
+                    timeStamp = record[3]!
                     cTimeStamp = String(describing: timeStamp)
                     let formatter = DateFormatter()
                     formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -218,37 +235,36 @@ class reportViewController: NSViewController {
         
         switch(period) {
             case "Today":
-                localQuery = query + " where date(tt.start) = date()"
+                _period = " where date(tt.start) = date()"
                 break;
         
             case "Yesterday":
-                localQuery = query + " where date(tt.start) = date('now','-1 day')"
+                _period = " where date(tt.start) = date('now','-1 day')"
                 break;
             
             case "This week":
-                localQuery = query + " where strftime('%W', tt.start, 'localtime') = strftime('%W', 'now', 'localtime')"
+                _period = " where strftime('%W', tt.start, 'localtime') = strftime('%W', 'now', 'localtime')"
                 break;
             
             case "This month":
-                localQuery = query + " where strftime('%m', tt.start, 'localtime') = strftime('%m', 'now', 'localtime')"
+                _period = " where strftime('%m', tt.start, 'localtime') = strftime('%m', 'now', 'localtime')"
                 break;
             
             case "This year":
-                localQuery = query + " where strftime('%Y', tt.start, 'localtime') = strftime('%Y', 'now', 'localtime')"
+                _period = " where strftime('%Y', tt.start, 'localtime') = strftime('%Y', 'now', 'localtime')"
                 break;
             
             default:
                 return;
         }
-        localQuery += groupAndOrderQuery
+        localQuery =  query + _period + groupAndOrderQuery
         
         do {
-            _summaryTaskItemsArr = Array(try db.prepare(localQuery))
-            processRecords()
+            _summaryTaskItemsArr = try db.prepare(localQuery)
         } catch {
-            print("error getting tasks")
+            print("error getting tasks: \(error)")
         }
-        
+        processRecords()
         reportTableView.reloadData()
     }
   
@@ -259,14 +275,15 @@ class reportViewController: NSViewController {
         let startDate = formatter.string(from: startDP.dateValue)
         let endDate = formatter.string(from: endDp.dateValue)
         
-        let localQuery = query + " tt.start >= '" + startDate + "' and tt.start <= '" + endDate + "'" + groupAndOrderQuery;
+        _period = " where tt.start >= '" + startDate + "' and tt.start <= '" + endDate + "'"
+        let localQuery = query + _period + groupAndOrderQuery;
         
         do {
-            _summaryTaskItemsArr = Array(try db.prepare(localQuery))
-            processRecords()
+            _summaryTaskItemsArr = try db.prepare(localQuery)
         } catch {
-            print("error getting tasks")
+            print("error getting tasks: \(error)")
         }
+        processRecords()
         
         reportTableView.reloadData()
     }

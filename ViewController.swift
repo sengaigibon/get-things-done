@@ -78,13 +78,14 @@ class ViewController: NSViewController {
     @objc private func onItemClicked() {
         
         _lastClickedTask = tableView.clickedRow
+        print(_lastClickedTask)
         
         if (_lastClickedTask < 0) {
             dialogOK(title: "Reminder", text: "Please select a task.")
             return
         }
         
-        switch(_taskItems[_lastClickedTask].get(_status)) {
+        switch(try! _taskItems[_lastClickedTask].get(_status)) {
             case "idle"?:
                 btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
                 break;
@@ -175,8 +176,8 @@ class ViewController: NSViewController {
         }
         
         let taskItem = _taskItems[_lastClickedTask]
-        let status = taskItem.get(_status);
-        let taskId = taskItem.get(_id);
+        let status = try! taskItem.get(_status);
+        let taskId = try! taskItem.get(_id);
         
         let date = Date()
         let formatter = DateFormatter()
@@ -190,7 +191,7 @@ class ViewController: NSViewController {
                 
                 do {
                     let insert = _taskTracker.insert(_trackerTaskId <- taskId!, _trackerStart <- now)
-                    let updateItem = _tasks.filter(_id == taskItem.get(_id))
+                    let updateItem = _tasks.filter(_id == (try! taskItem.get(_id)))
                     
                     try db.run(insert)
                     
@@ -209,13 +210,13 @@ class ViewController: NSViewController {
             case "active"?:
                 
                 do {
-                    let filteredTaskTracker = _taskTracker.filter(_trackerTaskId == taskItem.get(_id)!).order(_trackerTrackId.desc)
-                    let updateItem = _tasks.filter(_id == taskItem.get(_id))
+                    let filteredTaskTracker = _taskTracker.filter(_trackerTaskId == (try! taskItem.get(_id))!).order(_trackerTrackId.desc)
+                    let updateItem = _tasks.filter(_id == (try! taskItem.get(_id)))
                     
                     
                     let trackItem = try db.pluck(filteredTaskTracker)
-                    let trackItemId = trackItem?.get(_trackerTrackId)
-                    let trackItemStart = trackItem?.get(_trackerStart)
+                    let trackItemId = try! trackItem?.get(_trackerTrackId)
+                    let trackItemStart = try! trackItem?.get(_trackerStart)
                     
                     let startDate = formatter.date(from: trackItemStart!)
                     let totalTime = Calendar.current.dateComponents([.second], from: startDate!, to: date).second
@@ -228,6 +229,7 @@ class ViewController: NSViewController {
                     
                     btnStopWatch.image = NSImage(named: NSImage.Name(rawValue: "btnPlay"))
                     
+                    _lastClickedTask = -1
                     reloadContent()
 
                 } catch {
@@ -262,7 +264,7 @@ class ViewController: NSViewController {
             
         do {
             
-            let updateItem = _tasks.filter(_id == _taskItems[_lastClickedTask].get(_id))
+            let updateItem = _tasks.filter(_id == (try! _taskItems[_lastClickedTask].get(_id)))
             
             try db.run(updateItem.update(_status <- "completed"))
         
@@ -326,30 +328,30 @@ extension ViewController: NSTableViewDelegate {
         
         if tableColumn == tableView.tableColumns[0] {
             
-            text = String(item.get(_id)!)
+            text = String(try! item.get(_id)!)
             cellIdentifier = CellIdentifiers.idCell
             
         } else if tableColumn == tableView.tableColumns[1] {
             
-            text = item.get(_tag)!
+            text = try! item.get(_tag)!
             cellIdentifier = CellIdentifiers.tagCell
             
         } else if tableColumn == tableView.tableColumns[2] {
             
-            text = item.get(_taskTitle)
+            text = try! item.get(_taskTitle)
             cellIdentifier = CellIdentifiers.titleCell
             
         } else if tableColumn == tableView.tableColumns[3] {
             
-            text = item.get(_startDate)
+            text = try! item.get(_startDate)
             cellIdentifier = CellIdentifiers.startCell
         } else if tableColumn == tableView.tableColumns[4] {
             
-            text = item.get(_dueDate)!
+            text = try! item.get(_dueDate)!
             cellIdentifier = CellIdentifiers.dueCell
         } else if tableColumn == tableView.tableColumns[5] {
             
-            text = item.get(_status)!
+            text = try! item.get(_status)!
             cellIdentifier = CellIdentifiers.statusCell
         }
         

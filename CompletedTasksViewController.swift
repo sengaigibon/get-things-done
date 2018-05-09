@@ -85,35 +85,36 @@ extension CompletedTasksViewController: NSTableViewDelegate {
 
         let item = _taskItems[row]
 
+        
         if tableColumn == completedTasksTableView.tableColumns[0] {
 
-            text = String(item.get(_id)!)
+            text = String(try! item.get(_id)!)
             cellIdentifier = CellIdentifiers.idCell
 
         } else if tableColumn == completedTasksTableView.tableColumns[1] {
 
-            text = item.get(_tag)!
+            text = try! item.get(_tag)!
             cellIdentifier = CellIdentifiers.tagCell
 
         } else if tableColumn == completedTasksTableView.tableColumns[2] {
 
-            text = item.get(_taskTitle)
+            text = try! item.get(_taskTitle)
             cellIdentifier = CellIdentifiers.titleCell
 
         } else if tableColumn == completedTasksTableView.tableColumns[3] {
 
-            text = item.get(_startDate)
+            text = try! item.get(_startDate)
             cellIdentifier = CellIdentifiers.startCell
         } else if tableColumn == completedTasksTableView.tableColumns[4] {
 
-            text = item.get(_dueDate)!
+            text = try! item.get(_dueDate)!
             cellIdentifier = CellIdentifiers.dueCell
         } else if tableColumn == completedTasksTableView.tableColumns[5] {
 
-            text = item.get(_status)!
+            text = try! item.get(_status)!
             cellIdentifier = CellIdentifiers.statusCell
         }
-
+        
         if let cell = completedTasksTableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(rawValue: cellIdentifier), owner: nil) as? NSTableCellView {
             cell.textField?.stringValue = text
             return cell
